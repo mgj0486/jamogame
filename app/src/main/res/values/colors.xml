@@ -1,0 +1,5 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <!-- Compose 쪽 Paper/PaperDark 와 같은 값. 앱 시작 화면이 다른 색으로 번쩍이지 않게 맞춘다. -->
+    <color name="window_background">#FFFFFFFF</color>
+</resources>
