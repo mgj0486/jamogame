@@ -53,6 +53,34 @@ class HangulTest {
     }
 
     @Test
+    fun `자모를 음절로 되돌린다`() {
+        assertTrue("단어" in Hangul.compositions(Hangul.decompose("단어")))
+        assertTrue("깎" in Hangul.compositions(Hangul.decompose("깎")))
+        assertTrue("학교" in Hangul.compositions(Hangul.decompose("학교")))
+        assertTrue("왜" in Hangul.compositions(Hangul.decompose("왜")))
+        assertTrue("맑" in Hangul.compositions(Hangul.decompose("맑")))
+        // 없는 단어라도 음절로 떨어지면 조합은 나온다. 단어인지는 사전이 판단한다.
+        assertTrue("보랗" in Hangul.compositions(Hangul.decompose("보랗")))
+    }
+
+    @Test
+    fun `음절로 떨어지지 않으면 조합이 없다`() {
+        assertEquals(emptyList<String>(), Hangul.compositions(listOf("ㄱ", "ㄴ")))
+        assertEquals(emptyList<String>(), Hangul.compositions(listOf("ㅏ", "ㅓ")))
+    }
+
+    @Test
+    fun `모든 음절은 자기 자모열에서 되살아난다`() {
+        for (code in 0xAC00..0xD7A3) {
+            val syllable = code.toChar().toString()
+            assertTrue(
+                "$syllable 를 되살리지 못했다",
+                syllable in Hangul.compositions(Hangul.decompose(syllable), limit = 64),
+            )
+        }
+    }
+
+    @Test
     fun `키보드 자모 수는 자음 14개 모음 10개다`() {
         assertEquals(14, Hangul.BASIC_CONSONANTS.size)
         assertEquals(10, Hangul.BASIC_VOWELS.size)

@@ -80,6 +80,15 @@ object Hangul {
         return code in BASE..LAST && (code - BASE) % 28 != 0
     }
 
+    private val CHOSEONG_INDEX = CHOSEONG.withIndex().associate { (i, v) -> v to i }
+    private val JUNGSEONG_INDEX = JUNGSEONG.withIndex().associate { (i, v) -> v to i }
+    private val JONGSEONG_INDEX = JONGSEONG.withIndex().associate { (i, v) -> v to i }
+
+    /** 기본 자모 -> 합쳐진 자모. [decompose] 가 쓰는 표들을 뒤집은 것. */
+    private val MERGED: Map<String, String> =
+        (DOUBLED_CONSONANTS + COMPOUND_JONGSEONG + COMPOUND_VOWELS).entries
+            .associate { (whole, parts) -> parts.joinToString("") to whole }
+
     /** "단어" -> [ㄷ, ㅏ, ㄴ, ㅇ, ㅓ] / "왜" -> [ㅇ, ㅗ, ㅏ, ㅣ] / "깎" -> [ㄱ, ㄱ, ㅏ, ㄱ, ㄱ] */
     fun decompose(word: String): List<String> = buildList {
         for (ch in word) {
@@ -103,5 +112,55 @@ object Hangul {
                 }
             }
         }
+    }
+
+    /**
+     * [decompose] 의 역방향. 자모 목록을 음절 문자열로 되돌린다.
+     *
+     * 같은 자모열이 여러 가지로 읽힐 수 있어서([ㅎ,ㅏ,ㄱ,ㄱ,ㅛ] -> "학교" / "하끄"...)
+     * 가능한 읽기를 모두 돌려준다. 사전에 물어볼 후보를 만드는 데 쓴다.
+     * 자모가 음절로 떨어지지 않으면 빈 목록.
+     */
+    fun compositions(jamos: List<String>, limit: Int = 8): List<String> {
+        val results = mutableListOf<String>()
+
+        fun merged(from: Int, length: Int): String? = when (length) {
+            1 -> jamos.getOrNull(from)
+            else -> {
+                if (from + length > jamos.size) null
+                else MERGED[jamos.subList(from, from + length).joinToString("")]
+            }
+        }
+
+        fun walk(at: Int, acc: StringBuilder) {
+            if (results.size >= limit) return
+            if (at == jamos.size) {
+                results.add(acc.toString())
+                return
+            }
+            // 초성 1~2자(쌍자음) + 중성 1~3자(이중모음) + 종성 0~2자(쌍·겹받침)
+            for (choLen in 1..2) {
+                val cho = CHOSEONG_INDEX[merged(at, choLen) ?: continue] ?: continue
+                for (jungLen in 1..3) {
+                    val jungAt = at + choLen
+                    val jung = JUNGSEONG_INDEX[merged(jungAt, jungLen) ?: continue] ?: continue
+                    for (jongLen in 0..2) {
+                        val jongAt = jungAt + jungLen
+                        if (jongAt + jongLen > jamos.size) continue
+                        val jong = when (jongLen) {
+                            0 -> 0
+                            else -> JONGSEONG_INDEX[merged(jongAt, jongLen) ?: continue] ?: continue
+                        }
+                        acc.append((BASE + (cho * 21 + jung) * 28 + jong).toChar())
+                        walk(jongAt + jongLen, acc)
+                        acc.setLength(acc.length - 1)
+                        if (results.size >= limit) return
+                    }
+                }
+            }
+        }
+
+        walk(0, StringBuilder())
+        return results
     }
 }

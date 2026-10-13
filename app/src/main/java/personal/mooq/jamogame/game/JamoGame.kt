@@ -72,6 +72,17 @@ class JamoGame(answer: String) {
 
     val isInputFull: Boolean get() = _input.size == jamoCount
 
+    /**
+     * 지금 입력이 [jamos] 와 같은지.
+     *
+     * `input == jamos` 로 쓰면 안 된다. 입력은 SnapshotStateList 라 일반 List 와는
+     * structural equality 가 성립하지 않아 항상 false 가 나온다.
+     */
+    fun inputMatches(jamos: List<String>): Boolean = _input.toList() == jamos
+
+    /** 지금 입력이 정답과 같은지. 정답은 어떤 사전 검사도 거치지 않고 통과시켜야 한다. */
+    val isInputAnswer: Boolean get() = inputMatches(answerJamos)
+
     fun press(jamo: String) {
         if (status != GameStatus.PLAYING || isInputFull) return
         message = null

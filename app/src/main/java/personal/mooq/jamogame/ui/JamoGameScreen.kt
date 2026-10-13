@@ -51,6 +51,7 @@ import personal.mooq.jamogame.ui.theme.JamogameTheme
 @Composable
 fun JamoGameScreen(
     game: JamoGame,
+    checking: Boolean,
     onSubmit: () -> Unit,
     onNewGame: () -> Unit,
     onOpenSettings: () -> Unit,
@@ -105,7 +106,7 @@ fun JamoGameScreen(
                 )
             }
 
-            StatusArea(game, onNewGame)
+            StatusArea(game, checking, onNewGame)
 
             Spacer(Modifier.height(14.dp))
 
@@ -116,7 +117,7 @@ fun JamoGameScreen(
                     onKeyPress = game::press,
                     onBackspace = game::backspace,
                     onSubmit = onSubmit,
-                    submitEnabled = game.isInputFull && game.status == GameStatus.PLAYING,
+                    submitEnabled = game.isInputFull && game.status == GameStatus.PLAYING && !checking,
                     modifier = if (over) Modifier.blur(14.dp) else Modifier,
                 )
                 if (over) {
@@ -135,7 +136,7 @@ fun JamoGameScreen(
  * 키보드 바로 위 영역. 결과/안내 한 줄과, 길게 눌러야 먹히는 버튼 두 개.
  */
 @Composable
-private fun StatusArea(game: JamoGame, onNewGame: () -> Unit) {
+private fun StatusArea(game: JamoGame, checking: Boolean, onNewGame: () -> Unit) {
     // 짧게 눌렀을 때 띄우는 안내. 다시 입력을 시작하면 지운다.
     var hint by remember { mutableStateOf<String?>(null) }
     LaunchedEffect(game.input.size, game.submitted.size) { hint = null }
@@ -150,7 +151,7 @@ private fun StatusArea(game: JamoGame, onNewGame: () -> Unit) {
                 .height(30.dp),
             contentAlignment = Alignment.Center,
         ) {
-            StatusText(game, hint)
+            StatusText(game, checking, hint)
         }
         Row(
             modifier = Modifier.fillMaxWidth(),
@@ -179,8 +180,15 @@ private fun StatusArea(game: JamoGame, onNewGame: () -> Unit) {
 }
 
 @Composable
-private fun StatusText(game: JamoGame, hint: String?) {
+private fun StatusText(game: JamoGame, checking: Boolean, hint: String?) {
     when {
+        checking -> Text(
+            text = "사전에서 찾는 중…",
+            color = MaterialTheme.colorScheme.onSurfaceVariant,
+            fontSize = 14.sp,
+            textAlign = TextAlign.Center,
+        )
+
         game.message != null -> Text(
             text = game.message!!,
             color = MaterialTheme.colorScheme.error,
@@ -245,7 +253,7 @@ private fun JamoGameScreenPreview() {
             submit()
             press("ㄷ"); press("ㅏ")
         }
-        JamoGameScreen(game, onSubmit = {}, onNewGame = {}, onOpenSettings = {})
+        JamoGameScreen(game, checking = false, onSubmit = {}, onNewGame = {}, onOpenSettings = {})
     }
 }
 
@@ -253,6 +261,12 @@ private fun JamoGameScreenPreview() {
 @Composable
 private fun JamoGameScreenSixPreview() {
     JamogameTheme {
-        JamoGameScreen(JamoGame("라이브"), onSubmit = {}, onNewGame = {}, onOpenSettings = {})
+        JamoGameScreen(
+            JamoGame("라이브"),
+            checking = false,
+            onSubmit = {},
+            onNewGame = {},
+            onOpenSettings = {},
+        )
     }
 }

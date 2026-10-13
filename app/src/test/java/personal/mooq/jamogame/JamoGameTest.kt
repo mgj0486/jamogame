@@ -48,6 +48,24 @@ class JamoGameTest {
     }
 
     @Test
+    fun `정답을 입력하면 사전 검사 없이 알아본다`() {
+        val game = JamoGame("단어")
+        listOf("ㄷ", "ㅏ", "ㄴ", "ㅇ").forEach { game.press(it) }
+        assertEquals(false, game.isInputAnswer)
+        game.press("ㅓ")
+        assertTrue(game.isInputAnswer)
+    }
+
+    @Test
+    fun `입력 비교는 자모 목록과 맞춰본다`() {
+        // 입력은 SnapshotStateList 라 == 로 비교하면 늘 false 다. 그 함정을 막는 테스트.
+        val game = JamoGame("단어")
+        listOf("ㄱ", "ㅏ", "ㅂ", "ㅏ", "ㅇ").forEach { game.press(it) }
+        assertTrue(game.inputMatches(listOf("ㄱ", "ㅏ", "ㅂ", "ㅏ", "ㅇ")))
+        assertEquals(false, game.inputMatches(listOf("ㄱ", "ㅏ", "ㅂ", "ㅏ", "ㄴ")))
+    }
+
+    @Test
     fun `다 맞추면 승리한다`() {
         val game = JamoGame("단어")
         game.guess("ㄷ", "ㅏ", "ㄴ", "ㅇ", "ㅓ")
