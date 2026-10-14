@@ -2,6 +2,7 @@ package personal.mooq.jamogame
 
 import org.junit.Assert.assertEquals
 import org.junit.Assert.assertTrue
+import personal.mooq.jamogame.game.GameResult
 import personal.mooq.jamogame.game.GameStatus
 import personal.mooq.jamogame.game.JamoGame
 import personal.mooq.jamogame.game.MAX_ATTEMPTS
@@ -79,7 +80,7 @@ class JamoGameTest {
         game.press("ㄷ")
         game.submit()
         assertEquals(0, game.submitted.size)
-        assertEquals("자모 5개를 모두 채워주세요", game.message)
+        assertEquals(1, game.input.size) // 입력은 그대로 남는다
     }
 
     @Test
@@ -99,6 +100,33 @@ class JamoGameTest {
         game.guess("ㅋ", "ㅋ", "ㅋ", "ㅋ", "ㅓ") // 자리까지 맞아 초록
         assertEquals(Match.CORRECT, game.keyMatches["ㅓ"])
         assertEquals(Match.ABSENT, game.keyMatches["ㅋ"])
+    }
+
+    @Test
+    fun `끝난 판의 결과를 가린다`() {
+        val won = JamoGame("단어")
+        assertEquals(null, won.result)
+        won.guess("ㄷ", "ㅏ", "ㄴ", "ㅇ", "ㅓ")
+        assertEquals(GameResult.WON, won.result)
+
+        val lost = JamoGame("단어")
+        repeat(MAX_ATTEMPTS) { lost.guess("ㅋ", "ㅡ", "ㅋ", "ㅡ", "ㅋ") }
+        assertEquals(GameResult.LOST, lost.result)
+
+        val gaveUp = JamoGame("단어")
+        gaveUp.revealAnswer()
+        assertEquals(GameResult.REVEALED, gaveUp.result)
+    }
+
+    @Test
+    fun `새 게임을 시작하면 기록 표시가 풀린다`() {
+        val game = JamoGame("단어")
+        game.revealAnswer()
+        game.markRecorded()
+        assertTrue(game.recorded)
+        game.restart("사람")
+        assertEquals(false, game.recorded)
+        assertEquals(null, game.result)
     }
 
     @Test

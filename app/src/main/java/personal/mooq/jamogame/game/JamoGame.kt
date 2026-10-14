@@ -24,6 +24,29 @@ enum class Match(val rank: Int) {
 
 data class Tile(val jamo: String, val match: Match)
 
+/**
+ * 워들과 같은 2패스 채점. 먼저 자리까지 맞은 자모를 집계해서 빼고,
+ * 남은 자모 중에 있으면 PRESENT. 중복 자모를 과하게 노랗게 칠하지 않기 위함.
+ *
+ * 게임판과 지난 기록이 같은 색을 내도록 양쪽에서 이 함수를 쓴다.
+ */
+fun scoreGuess(answerJamos: List<String>, guess: List<String>): List<Tile> {
+    val remaining = answerJamos.toMutableList()
+    val matches = arrayOfNulls<Match>(guess.size)
+
+    guess.forEachIndexed { i, jamo ->
+        if (answerJamos.getOrNull(i) == jamo) {
+            matches[i] = Match.CORRECT
+            remaining.remove(jamo)
+        }
+    }
+    guess.forEachIndexed { i, jamo ->
+        if (matches[i] != null) return@forEachIndexed
+        matches[i] = if (remaining.remove(jamo)) Match.PRESENT else Match.ABSENT
+    }
+    return guess.mapIndexed { i, jamo -> Tile(jamo, matches[i]!!) }
+}
+
 enum class GameStatus { PLAYING, WON, LOST }
 
 /**
@@ -52,13 +75,26 @@ class JamoGame(answer: String) {
     var status by mutableStateOf(GameStatus.PLAYING)
         private set
 
-    /** 한 줄 안내 문구. (자모가 덜 찼을 때 등) */
-    var message by mutableStateOf<String?>(null)
-        private set
-
     /** 정답을 펼쳐 봤는지. 시도를 모두 쓴 패배와 구분해 저장해 둔다. */
     var revealed by mutableStateOf(false)
         private set
+
+    /** 이 판을 히스토리에 남겼는지. 앱을 다시 켜도 같은 판이 두 번 쌓이지 않게 한다. */
+    var recorded by mutableStateOf(false)
+        private set
+
+    fun markRecorded() {
+        recorded = true
+    }
+
+    /** 끝난 판의 결과. 아직 진행 중이면 null. */
+    val result: GameResult?
+        get() = when {
+            status == GameStatus.WON -> GameResult.WON
+            status == GameStatus.LOST && revealed -> GameResult.REVEALED
+            status == GameStatus.LOST -> GameResult.LOST
+            else -> null
+        }
 
     /** 키보드 키에 칠할 색. 같은 자모를 여러 번 썼으면 가장 좋은 결과를 쓴다. */
     val keyMatches: Map<String, Match> by derivedStateOf {
@@ -85,32 +121,25 @@ class JamoGame(answer: String) {
 
     fun press(jamo: String) {
         if (status != GameStatus.PLAYING || isInputFull) return
-        message = null
         _input.add(jamo)
     }
 
     fun backspace() {
         if (status != GameStatus.PLAYING || _input.isEmpty()) return
-        message = null
         _input.removeAt(_input.lastIndex)
     }
 
     fun submit() {
-        if (status != GameStatus.PLAYING) return
-        if (!isInputFull) {
-            message = "자모 ${jamoCount}개를 모두 채워주세요"
-            return
-        }
+        if (status != GameStatus.PLAYING || !isInputFull) return
         val guess = _input.toList()
         _input.clear()
-        message = null
         play(guess)
     }
 
     /** 채점해서 한 줄 올린다. 저장해 둔 판을 되살릴 때도 같은 길을 쓴다. */
     fun play(guess: List<String>) {
         if (guess.size != jamoCount || _submitted.size >= MAX_ATTEMPTS) return
-        _submitted.add(evaluate(guess))
+        _submitted.add(scoreGuess(answerJamos, guess))
         status = when {
             guess == answerJamos -> GameStatus.WON
             _submitted.size >= MAX_ATTEMPTS -> GameStatus.LOST
@@ -123,7 +152,6 @@ class JamoGame(answer: String) {
         if (status != GameStatus.PLAYING) return
         revealed = true
         status = GameStatus.LOST
-        message = null
     }
 
     fun restart(newAnswer: String = answer) {
@@ -133,28 +161,7 @@ class JamoGame(answer: String) {
         _input.clear()
         status = GameStatus.PLAYING
         revealed = false
-        message = null
-    }
-
-    /**
-     * 워들과 같은 2패스 채점. 먼저 자리까지 맞은 자모를 집계해서 빼고,
-     * 남은 자모 중에 있으면 PRESENT. 중복 자모를 과하게 노랗게 칠하지 않기 위함.
-     */
-    private fun evaluate(guess: List<String>): List<Tile> {
-        val remaining = answerJamos.toMutableList()
-        val matches = arrayOfNulls<Match>(guess.size)
-
-        guess.forEachIndexed { i, jamo ->
-            if (answerJamos.getOrNull(i) == jamo) {
-                matches[i] = Match.CORRECT
-                remaining.remove(jamo)
-            }
-        }
-        guess.forEachIndexed { i, jamo ->
-            if (matches[i] != null) return@forEachIndexed
-            matches[i] = if (remaining.remove(jamo)) Match.PRESENT else Match.ABSENT
-        }
-        return guess.mapIndexed { i, jamo -> Tile(jamo, matches[i]!!) }
+        recorded = false
     }
 
     companion object {
@@ -172,6 +179,7 @@ class JamoGame(answer: String) {
                     game.submitted.map { row -> row.map { it.jamo } },
                     game.input.toList(),
                     game.revealed,
+                    game.recorded,
                 )
             },
             restore = { saved ->
@@ -182,6 +190,7 @@ class JamoGame(answer: String) {
                     (state[1] as List<List<String>>).forEach { row -> play(row) }
                     _input.addAll(state[2] as List<String>)
                     if (state[3] as Boolean) revealAnswer()
+                    if (state[4] as Boolean) markRecorded()
                 }
             },
         )

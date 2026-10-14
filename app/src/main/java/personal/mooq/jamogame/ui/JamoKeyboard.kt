@@ -9,8 +9,12 @@ import androidx.compose.foundation.layout.Spacer
 import androidx.compose.foundation.layout.fillMaxWidth
 import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
+import androidx.compose.foundation.layout.size
 import androidx.compose.foundation.layout.width
 import androidx.compose.foundation.shape.RoundedCornerShape
+import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.automirrored.filled.ArrowBack
+import androidx.compose.material3.Icon
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Surface
 import androidx.compose.material3.Text
@@ -24,7 +28,7 @@ import androidx.compose.ui.unit.sp
 import personal.mooq.jamogame.game.Match
 
 /** 지우기 키 자리를 나타내는 표식. 자모가 아니라서 따로 구분한다. */
-private const val BACKSPACE = "←"
+private const val BACKSPACE = "backspace"
 
 /**
  * 두벌식 배열을 기본 자모만 남겨 줄인 전용 키보드.
@@ -103,13 +107,24 @@ private fun Key(
             modifier = Modifier.padding(2.dp),
             contentAlignment = Alignment.Center,
         ) {
-            Text(
-                text = label,
-                color = textColor
-                    ?: if (match != null) MatchColors.onMatch else MaterialTheme.colorScheme.onSurface,
-                fontSize = 18.sp,
-                fontWeight = FontWeight.Bold,
-            )
+            val contentColor = textColor
+                ?: if (match != null) MatchColors.onMatch else MaterialTheme.colorScheme.onSurface
+            if (label == BACKSPACE) {
+                // 글자로 그린 화살표는 자모 옆에서 가늘어 보여서 아이콘을 쓴다.
+                Icon(
+                    imageVector = Icons.AutoMirrored.Filled.ArrowBack,
+                    contentDescription = "지우기",
+                    tint = contentColor,
+                    modifier = Modifier.size(26.dp),
+                )
+            } else {
+                Text(
+                    text = label,
+                    color = contentColor,
+                    fontSize = 18.sp,
+                    fontWeight = FontWeight.Bold,
+                )
+            }
         }
     }
 }

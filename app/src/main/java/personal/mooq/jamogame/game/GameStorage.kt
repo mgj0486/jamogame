@@ -20,6 +20,7 @@ class GameStorage(context: Context) {
                 row.joinToString("") { it.jamo }
             })
             putBoolean(KEY_REVEALED, game.revealed)
+            putBoolean(KEY_RECORDED, game.recorded)
         }
     }
 
@@ -37,6 +38,7 @@ class GameStorage(context: Context) {
             .forEach { row -> game.play(row.map { it.toString() }) }
 
         if (prefs.getBoolean(KEY_REVEALED, false)) game.revealAnswer()
+        if (prefs.getBoolean(KEY_RECORDED, false)) game.markRecorded()
         return game
     }
 
@@ -45,6 +47,7 @@ class GameStorage(context: Context) {
         const val KEY_ANSWER = "answer"
         const val KEY_GUESSES = "guesses"
         const val KEY_REVEALED = "revealed"
+        const val KEY_RECORDED = "recorded"
         const val ROW_SEPARATOR = "|"
     }
 }

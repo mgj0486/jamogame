@@ -1,6 +1,9 @@
 package personal.mooq.jamogame.ui
 
 import androidx.compose.animation.animateColorAsState
+import androidx.compose.animation.core.Animatable
+import androidx.compose.animation.core.Spring
+import androidx.compose.animation.core.spring
 import androidx.compose.foundation.background
 import androidx.compose.foundation.border
 import androidx.compose.foundation.layout.Arrangement
@@ -13,11 +16,14 @@ import androidx.compose.foundation.shape.RoundedCornerShape
 import androidx.compose.material3.MaterialTheme
 import androidx.compose.material3.Text
 import androidx.compose.runtime.Composable
+import androidx.compose.runtime.LaunchedEffect
 import androidx.compose.runtime.getValue
+import androidx.compose.runtime.remember
 import androidx.compose.ui.Alignment
 import androidx.compose.ui.Modifier
 import androidx.compose.ui.draw.clip
 import androidx.compose.ui.graphics.Color
+import androidx.compose.ui.graphics.graphicsLayer
 import androidx.compose.ui.text.font.FontWeight
 import androidx.compose.ui.unit.dp
 import androidx.compose.ui.unit.sp
@@ -83,17 +89,33 @@ private fun ScoredTile(tile: Tile, modifier: Modifier) {
 
 @Composable
 private fun InputTile(jamo: String?, modifier: Modifier) {
+    // 자모가 들어오는 순간 살짝 튀어오르게 해서 어느 칸에 찍혔는지 눈에 들어오게 한다.
+    val pop = remember { Animatable(1f) }
+    LaunchedEffect(jamo) {
+        if (jamo != null) {
+            pop.snapTo(0.8f)
+            pop.animateTo(1f, spring(dampingRatio = Spring.DampingRatioMediumBouncy))
+        } else {
+            pop.snapTo(1f)
+        }
+    }
     TileBox(
         jamo = jamo,
         textColor = MaterialTheme.colorScheme.onSurface,
         modifier = modifier
             .clip(RoundedCornerShape(4.dp))
             .border(2.dp, MatchColors.tileBorder(filled = jamo != null), RoundedCornerShape(4.dp)),
+        contentScale = pop.value,
     )
 }
 
 @Composable
-private fun TileBox(jamo: String?, textColor: Color, modifier: Modifier) {
+private fun TileBox(
+    jamo: String?,
+    textColor: Color,
+    modifier: Modifier,
+    contentScale: Float = 1f,
+) {
     Box(modifier = modifier, contentAlignment = Alignment.Center) {
         if (jamo != null) {
             Text(
@@ -101,6 +123,10 @@ private fun TileBox(jamo: String?, textColor: Color, modifier: Modifier) {
                 color = textColor,
                 fontSize = 30.sp,
                 fontWeight = FontWeight.Bold,
+                modifier = Modifier.graphicsLayer {
+                    scaleX = contentScale
+                    scaleY = contentScale
+                },
             )
         }
     }

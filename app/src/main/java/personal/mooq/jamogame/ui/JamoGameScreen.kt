@@ -16,10 +16,10 @@ import androidx.compose.foundation.layout.height
 import androidx.compose.foundation.layout.padding
 import androidx.compose.foundation.layout.widthIn
 import androidx.compose.material.icons.Icons
+import androidx.compose.material.icons.filled.DateRange
 import androidx.compose.material.icons.filled.Settings
 import androidx.compose.material3.CenterAlignedTopAppBar
 import androidx.compose.material3.ExperimentalMaterial3Api
-import androidx.compose.material3.HorizontalDivider
 import androidx.compose.material3.Icon
 import androidx.compose.material3.IconButton
 import androidx.compose.material3.MaterialTheme
@@ -52,8 +52,11 @@ import personal.mooq.jamogame.ui.theme.JamogameTheme
 fun JamoGameScreen(
     game: JamoGame,
     checking: Boolean,
+    notice: String?,
+    onNotice: (String) -> Unit,
     onSubmit: () -> Unit,
     onNewGame: () -> Unit,
+    onOpenHistory: () -> Unit,
     onOpenSettings: () -> Unit,
     modifier: Modifier = Modifier,
 ) {
@@ -63,6 +66,13 @@ fun JamoGameScreen(
             CenterAlignedTopAppBar(
                 title = {},
                 actions = {
+                    IconButton(onClick = onOpenHistory) {
+                        Icon(
+                            imageVector = Icons.Default.DateRange,
+                            contentDescription = "지난 기록",
+                            tint = MaterialTheme.colorScheme.onSurfaceVariant,
+                        )
+                    }
                     IconButton(onClick = onOpenSettings) {
                         Icon(
                             imageVector = Icons.Default.Settings,
@@ -84,14 +94,16 @@ fun JamoGameScreen(
                 .padding(horizontal = 12.dp),
             horizontalAlignment = Alignment.CenterHorizontally,
         ) {
-            HorizontalDivider()
-
             BoxWithConstraints(
                 modifier = Modifier
                     .weight(1f)
                     .fillMaxWidth(),
                 contentAlignment = Alignment.Center,
             ) {
+                TopMessage(
+                    message = notice,
+                    modifier = Modifier.align(Alignment.TopCenter),
+                )
                 // 타일이 정사각형이라 보드 높이는 폭에 따라간다. 남은 높이에 모든 줄이 들어갈
                 // 만큼으로 폭을 제한해서 화면이 짧아도 보드가 잘리지 않게 한다.
                 val columns = game.jamoCount
@@ -106,7 +118,7 @@ fun JamoGameScreen(
                 )
             }
 
-            StatusArea(game, checking, onNewGame)
+            StatusArea(game, checking, onNotice, onNewGame)
 
             Spacer(Modifier.height(14.dp))
 
@@ -136,11 +148,12 @@ fun JamoGameScreen(
  * 키보드 바로 위 영역. 결과/안내 한 줄과, 길게 눌러야 먹히는 버튼 두 개.
  */
 @Composable
-private fun StatusArea(game: JamoGame, checking: Boolean, onNewGame: () -> Unit) {
-    // 짧게 눌렀을 때 띄우는 안내. 다시 입력을 시작하면 지운다.
-    var hint by remember { mutableStateOf<String?>(null) }
-    LaunchedEffect(game.input.size, game.submitted.size) { hint = null }
-
+private fun StatusArea(
+    game: JamoGame,
+    checking: Boolean,
+    onNotice: (String) -> Unit,
+    onNewGame: () -> Unit,
+) {
     Column(
         modifier = Modifier.fillMaxWidth(),
         horizontalAlignment = Alignment.CenterHorizontally,
@@ -148,31 +161,27 @@ private fun StatusArea(game: JamoGame, checking: Boolean, onNewGame: () -> Unit)
         Box(
             modifier = Modifier
                 .fillMaxWidth()
-                .height(30.dp),
+                .height(30.dp)
+                .padding(bottom = 4.dp),
             contentAlignment = Alignment.Center,
         ) {
-            StatusText(game, checking, hint)
+            StatusText(game, checking)
         }
+        Spacer(Modifier.height(16.dp))
         Row(
             modifier = Modifier.fillMaxWidth(),
             horizontalArrangement = Arrangement.spacedBy(8.dp),
         ) {
             LongPressButton(
                 text = "길게 눌러 정답확인",
-                onLongPress = {
-                    hint = null
-                    game.revealAnswer()
-                },
-                onShortPress = { hint = "길게 누르면 정답을 확인해요" },
+                onLongPress = { game.revealAnswer() },
+                onShortPress = { onNotice("길게 누르면 정답을 확인해요") },
                 modifier = Modifier.weight(1f),
             )
             LongPressButton(
                 text = "길게 눌러 새 게임",
-                onLongPress = {
-                    hint = null
-                    onNewGame()
-                },
-                onShortPress = { hint = "길게 누르면 새 게임을 시작해요" },
+                onLongPress = onNewGame,
+                onShortPress = { onNotice("길게 누르면 새 게임을 시작해요") },
                 modifier = Modifier.weight(1f),
             )
         }
@@ -180,24 +189,10 @@ private fun StatusArea(game: JamoGame, checking: Boolean, onNewGame: () -> Unit)
 }
 
 @Composable
-private fun StatusText(game: JamoGame, checking: Boolean, hint: String?) {
+private fun StatusText(game: JamoGame, checking: Boolean) {
     when {
         checking -> Text(
             text = "사전에서 찾는 중…",
-            color = MaterialTheme.colorScheme.onSurfaceVariant,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center,
-        )
-
-        game.message != null -> Text(
-            text = game.message!!,
-            color = MaterialTheme.colorScheme.error,
-            fontSize = 14.sp,
-            textAlign = TextAlign.Center,
-        )
-
-        hint != null -> Text(
-            text = hint,
             color = MaterialTheme.colorScheme.onSurfaceVariant,
             fontSize = 14.sp,
             textAlign = TextAlign.Center,
@@ -253,7 +248,16 @@ private fun JamoGameScreenPreview() {
             submit()
             press("ㄷ"); press("ㅏ")
         }
-        JamoGameScreen(game, checking = false, onSubmit = {}, onNewGame = {}, onOpenSettings = {})
+        JamoGameScreen(
+            game,
+            checking = false,
+            notice = null,
+            onNotice = {},
+            onSubmit = {},
+            onNewGame = {},
+            onOpenHistory = {},
+            onOpenSettings = {},
+        )
     }
 }
 
@@ -264,8 +268,11 @@ private fun JamoGameScreenSixPreview() {
         JamoGameScreen(
             JamoGame("라이브"),
             checking = false,
+            notice = "길게 누르면 새 게임을 시작해요",
+            onNotice = {},
             onSubmit = {},
             onNewGame = {},
+            onOpenHistory = {},
             onOpenSettings = {},
         )
     }
